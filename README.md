@@ -1,8 +1,7 @@
 ## http-server-hot
 
-基于很多公司都涉及早期的项目如官网页面，h5活动页等非单页面应用（jquery项目），开发起来需要每次手动刷新页面，如果有缓存的话还需要强刷才能见效。
-___
-**http-server-hot开启一个http服务的同时，可以对引用的资源（css、js）进行热更新，使开发变得更加高效。**
+**http-server-hot开启一个http服务的同时，可以对引用的资源（css、js）进行热更新，使开发变得更加高效**
+**http-server-hot可以快速配置要代理的域名，解决API跨域问题带来的烦恼**
 ___
 
 
@@ -21,6 +20,17 @@ http-server-hot [path] [options]
 ```
 _Now you can visit http://localhost:4725/your-page to view your server_
 
+Start Proxy
+=====
+```
+http-server-hot -p [domin] -t [agent]
+```
+
+**Tip:**
+**domin: 要进行解析的域名**
+**agent: 代理值**
+
+eg: http-server-hot -p http://192.168.0.90 -t api
 
 License
 ====

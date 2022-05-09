@@ -1,21 +1,24 @@
 {
   "name": "http-server-hot",
-  "version": "0.0.8",
-  "description": "http-server-hot用来对传统项目（jquery官网类，非单页面应用）开启一个http服务并实现当前目录下的资源（html、css、js）热更新",
+  "version": "0.1.2",
+  "description": "http-server-hot用来对传统项目（jquery官网类，非单页面应用）开启一个http服务并实现当前目录下的资源（html、css、js）热更新；可以快速配置api代理，解决跨域带来的烦恼",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "http、http-server、热更新、热编译"
+    "http、http-server、热更新、热编译、nginx"
   ],
   "author": "PeiXiaoMeng",
   "license": "ISC",
   "dependencies": {
     "chalk": "^4.1.2",
     "child_process": "^1.0.2",
+    "connect": "^3.7.0",
+    "express": "^4.18.1",
     "fs": "0.0.1-security",
     "http": "0.0.1-security",
+    "http-proxy-middleware": "^2.0.6",
     "minimist": "^1.2.6",
     "opener": "^1.5.2",
     "readline": "^1.3.0",

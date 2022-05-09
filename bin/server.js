@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 
+const connect = require('connect');
 const http = require('http');
 const fs = require('fs');
 const shell = require('shelljs');
 const opener = require('opener');
 const { execSync } = require('child_process');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const chalk = require('chalk');
 const log = content => console.log(`${chalk.bgGreen('DONE')} ${chalk.green(content)}`);
 
+const { changeProxy } = require('../lib/index');
+
 const os = require('os');
 const ifaces = os.networkInterfaces();
+
+const app = connect();
 
 process.title = 'http-server-hot';
 
@@ -24,11 +30,22 @@ let argv = require('minimist')(process.argv.slice(2), {
 
 let onMsgUrl = ''; // 监听文件目录匹配
 
+const configMap = new Map([
+  /**95环境 */
+  [95, 'http://95.kky.dzods.cn'],
+  /**96环境 */
+  [96, 'http://96.kky.dzods.cn'],
+  /**yfb */
+  ['yfb', 'http://yfb.kky.dzods.cn'],
+])
+
 if (argv.h || argv.help) {
   console.log([
     'usage: http-server-hot [path] [options]',
     '',
     'options:',
+    '  -p [ip]      Start proxy',
+    '  -t [agent]   Target Agent',
     '  -o [path]    Open browser window after starting the server.',
     '               Optionally provide a URL path to open the browser window to.',
     '  -h --help          Print this list and exit.',
@@ -63,48 +80,54 @@ let options = {
   root: argv._[0],
 }
 
+if (argv.p && typeof argv.p === 'string' && argv.t && typeof argv.t === 'string') {
+  let origin = configMap.has(argv.p) ? configMap.get(argv.p) : changeProxy(argv.p);
+  !!origin && app.use('/' + argv.t, createProxyMiddleware({ target: origin, changeOrigin: true }));
+  !!origin && log(`域名【${origin}】已成功代理在【/${argv.t}】`);
+}
+
+app.use((request, response) => {
+
+  let data;
+  const reqUrl = request.url.includes('?') ? request.url.split('?')[0] : request.url;
+  const pngReg = /\.(png|PNG)$/i;
+  const jpgReg = /\.(jpg|jpeg|JPG|JPEG)$/i;
+
+  try {
+    data = fs.readFileSync(`.${reqUrl}`);
+    if (reqUrl.includes('.html')) {
+      const lastIndex = reqUrl.lastIndexOf('/');
+      onMsgUrl = reqUrl.substr(0, lastIndex) ? `${reqUrl.substr(0, lastIndex)}/` :  reqUrl.substr(0, lastIndex);
+      data += `
+    <script>
+      var wsClient = new WebSocket('ws://127.0.0.1:4726');
+      wsClient.open = function (e) {}
+      wsClient.onclose = function (e) {}
+      wsClient.onerror = function (e) {}
+      wsClient.onmessage = (msg) => {
+        const { update } = JSON.parse(msg.data)
+        if(update){
+            location.reload()
+        }
+      }
+    </script>
+    `
+      log(`正在监听文件: 【${request.url}】`);
+      response.end(data);
+    } else if (pngReg.test(reqUrl)) {
+      response.setHeader('Content-Type','image/png');
+      response.end(data);
+    } else if (jpgReg.test(reqUrl)) {
+      response.setHeader('Content-Type','image/jpeg');
+      response.end(data);
+    } else {
+      response.end(data);
+    }
+  } catch (e) { data = null }});
+
 // httpServer流程
 const proStrem = () => {
-  var server = http.createServer(options, (request, response)=> {
-
-    let data;
-    const reqUrl = request.url.includes('?') ? request.url.split('?')[0] : request.url;
-    const pngReg = /\.(png|PNG)$/i;
-    const jpgReg = /\.(jpg|jpeg|JPG|JPEG)$/i;
-  
-    try {
-      data = fs.readFileSync(`.${reqUrl}`);
-      if (reqUrl.includes('.html')) {
-        const lastIndex = reqUrl.lastIndexOf('/');
-        onMsgUrl = reqUrl.substr(0, lastIndex) ? `${reqUrl.substr(0, lastIndex)}/` :  reqUrl.substr(0, lastIndex);
-        data += `
-      <script>
-        var wsClient = new WebSocket('ws://127.0.0.1:4726');
-        wsClient.open = function (e) {}
-        wsClient.onclose = function (e) {}
-        wsClient.onerror = function (e) {}
-        wsClient.onmessage = (msg) => {
-          const { update } = JSON.parse(msg.data)
-          if(update){
-              location.reload()
-          }
-        }
-      </script>
-      `
-        log(`正在监听文件: 【${request.url}】`);
-        response.end(data);
-      } else if (pngReg.test(reqUrl)) {
-        response.setHeader('Content-Type','image/png');
-        response.end(data);
-      } else if (jpgReg.test(reqUrl)) {
-        response.setHeader('Content-Type','image/jpeg');
-        response.end(data);
-      } else {
-        response.end(data);
-      }
-    } catch (e) { data = null }
-  
-  });
+  var server = http.createServer(app);
   
   if (options.root) {
     server.root = options.root;
@@ -167,11 +190,23 @@ if (tls) {
 }
 
 function deepFind() {
-  let fileStr = execSync('find . -maxdepth 10 -name "*.html" -o -name "*.css" -o -name "*.js"').toString();
-  let fileArr = fileStr.split('\n');
+  let cmdStr;
+  if (process.platform === 'win32' || process.platform === 'win64') {
+    cmdStr = 'for /r ./ %i in (*.html,*.js,*.css) do @echo %i';
+  } else {
+    cmdStr = 'find . -maxdepth 10 -name "*.html" -o -name "*.css" -o -name "*.js"';
+  }
+  let fileStr = execSync(cmdStr).toString();
+  let fileArr = fileStr.split((process.platform === 'win32' || process.platform === 'win64') ? '\r\n' : '\n');
   !!fileArr.length && fileArr.pop();
   if (onMsgUrl) {
     fileArr = fileArr.filter(item => item.includes(onMsgUrl));
+  }
+  if (process.platform === 'win32' || process.platform === 'win64') {
+    fileArr = fileArr.map(item => {
+      item = item.replace(/\\/g, '\/');
+      return item;
+    })
   }
   return fileArr;
 };
