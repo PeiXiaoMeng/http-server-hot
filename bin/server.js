@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const inquirer = require('inquirer');
 const connect = require('connect');
 const http = require('http');
 const fs = require('fs');
@@ -33,8 +34,10 @@ let onMsgUrl = ''; // 监听文件目录匹配
 const configMap = new Map([
   /**95环境 */
   [95, 'http://95.kky.dzods.cn'],
+  ['95', 'http://95.kky.dzods.cn'],
   /**96环境 */
   [96, 'http://96.kky.dzods.cn'],
+  ['96', 'http://96.kky.dzods.cn'],
   /**yfb */
   ['yfb', 'http://yfb.kky.dzods.cn'],
 ])
@@ -44,8 +47,6 @@ if (argv.h || argv.help) {
     'usage: http-server-hot [path] [options]',
     '',
     'options:',
-    '  -p [ip]      Start proxy',
-    '  -t [agent]   Target Agent',
     '  -o [path]    Open browser window after starting the server.',
     '               Optionally provide a URL path to open the browser window to.',
     '  -h --help          Print this list and exit.',
@@ -80,10 +81,74 @@ let options = {
   root: argv._[0],
 }
 
-if (argv.p && typeof argv.p === 'string' && argv.t && typeof argv.t === 'string') {
-  let origin = configMap.has(argv.p) ? configMap.get(argv.p) : changeProxy(argv.p);
-  !!origin && app.use('/' + argv.t, createProxyMiddleware({ target: origin, changeOrigin: true }));
-  !!origin && log(`域名【${origin}】已成功代理在【/${argv.t}】`);
+// proxy 是否启动
+const questions = [{
+	type: 'list',
+	name: 'isProxy',
+  message: '是否要开启跨域代理？（开启跨域代理后，代理的域名将可以通过代理名称来替代）',
+  choices: ['否', '是'],
+	filter: function(val) {
+		return val;
+	}
+}];
+
+// proxy 选项
+const questionProxy = [{
+  type: 'input',
+  name: 'proxy',
+  message: '要代理的域名？',
+  default: 'http://192.168.0.20',
+  filter: function(val) {
+    return val;
+  }
+}, {
+  type: 'input',
+  name: 'agent',
+  message: '要代理的名称？',
+  default: 'glory',
+  filter: function(val) {
+    return val;
+  }
+}];
+
+function initProcess() {
+  inquirer.prompt(questions)
+	.then(answers => {
+    if (answers.isProxy === '否') {
+      // 不开启代理
+      runProcess();
+      return;
+    }
+    inquirer.prompt(questionProxy).then(result => {
+      // if (argv.p && typeof argv.p === 'string' && argv.t && typeof argv.t === 'string') {
+      //   let origin = configMap.has(argv.p) ? configMap.get(argv.p) : changeProxy(argv.p);
+      //   !!origin && app.use('/' + argv.t, createProxyMiddleware({ target: origin, changeOrigin: true }));
+      //   !!origin && log(`域名【${origin}】已成功代理在【/${argv.t}】`);
+      // }
+      let origin = configMap.has(result.proxy) ? configMap.get(result.proxy) : changeProxy(result.proxy);
+      !!origin && app.use('/' + result.agent, createProxyMiddleware({ target: origin, changeOrigin: true }));
+      !!origin && log(`域名【${origin}】已成功代理在【/${result.agent}】`);
+      runProcess();
+    })
+  });
+}
+
+
+initProcess();
+
+
+function runProcess() {
+  if (!!argv._[0]) {
+    try {
+      shell.cd(argv._[0]);
+      proStrem();
+    } catch(e) {
+      logger.info(chalk.red(`Error: 启动服务的目录【${argv._[0]}】错误，请仔细检查`));
+      process.exit();
+    }
+  } else {
+    proStrem();
+  }
 }
 
 app.use((request, response) => {
@@ -170,18 +235,6 @@ const proStrem = () => {
     }
 
   })
-}
-
-if (!!argv._[0]) {
-  try {
-    shell.cd(argv._[0]);
-    proStrem();
-  } catch(e) {
-    logger.info(chalk.red(`Error: 启动服务的目录【${argv._[0]}】错误，请仔细检查`));
-    process.exit();
-  }
-} else {
-  proStrem();
 }
 
 if (tls) {

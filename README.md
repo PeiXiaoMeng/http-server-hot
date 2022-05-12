@@ -4,6 +4,9 @@
 **http-server-hot可以快速配置要代理的域名，解决API跨域问题带来的烦恼**
 ___
 
+Introduce
+============
+使用介绍：https://juejin.cn/post/7096451657659056159
 
 Installation
 ============
@@ -20,17 +23,6 @@ http-server-hot [path] [options]
 ```
 _Now you can visit http://localhost:4725/your-page to view your server_
 
-Start Proxy
-=====
-```
-http-server-hot -p [domin] -t [agent]
-```
-
-**Tip:**
-**domin: 要进行解析的域名**
-**agent: 代理值**
-
-eg: http-server-hot -p http://192.168.0.90 -t api
 
 License
 ====
