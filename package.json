@@ -1,6 +1,6 @@
 {
   "name": "http-server-hot",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "description": "http-server-hot用来对传统项目（jquery官网类，非单页面应用）开启一个http服务并实现当前目录下的资源（html、css、js）热更新；可以快速配置api代理，解决跨域带来的烦恼",
   "main": "index.js",
   "scripts": {
@@ -18,6 +18,7 @@
     "express": "^4.18.1",
     "fs": "0.0.1-security",
     "http": "0.0.1-security",
+    "http-proxy": "^1.18.1",
     "http-proxy-middleware": "^2.0.6",
     "inquirer": "^7.0.0",
     "minimist": "^1.2.6",
@@ -27,6 +28,6 @@
     "ws": "^8.5.0"
   },
   "bin": {
-    "http-server-hot": "bin/server.js"
+    "http-server-hot": "bin/index.js"
   }
 }
